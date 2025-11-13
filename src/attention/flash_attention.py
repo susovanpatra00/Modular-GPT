@@ -9,8 +9,8 @@ class FlashAttention(nn.Module):
     """
     def __init__(self, config):
         super().__init__()
-        self.n_head = config.n_head
-        self.head_dim = config.n_embd // config.n_head
+        self.n_head = getattr(config, 'num_heads', getattr(config, 'n_head', 12))
+        self.head_dim = config.n_embd // self.n_head
         self.dropout = config.dropout
 
         self.q_proj = nn.Linear(config.n_embd, config.n_embd)  # Shape: (B, T, C) -> (B, T, C)

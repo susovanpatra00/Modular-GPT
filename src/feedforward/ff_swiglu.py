@@ -10,7 +10,7 @@ class SwiGLUFFN(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.n_embd = config.n_embd
-        self.mult = getattr(config, "ffn_mult", 4)
+        self.mult = getattr(config, "ffn_hidden_mult", getattr(config, "ffn_mult", 4))
         self.dropout = config.dropout
 
         hidden_dim = int(self.mult * self.n_embd * 2 / 3)  # smaller than standard FFN
@@ -22,3 +22,6 @@ class SwiGLUFFN(nn.Module):
     def forward(self, x):
         # SwiGLU: (xW1 * σ(xW2))W3
         return self.drop(self.w3(F.silu(self.w1(x)) * self.w2(x)))
+
+# Alias for config compatibility
+GatedFeedForward = SwiGLUFFN
