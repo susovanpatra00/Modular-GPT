@@ -68,9 +68,11 @@ class GPTModel(nn.Module):
                 torch.nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-        elif isinstance(module, nn.LayerNorm):
-            torch.nn.init.zeros_(module.bias)
-            torch.nn.init.ones_(module.weight)
+        elif isinstance(module, (nn.LayerNorm, nn.RMSNorm)):  
+            if hasattr(module, 'weight'):
+                torch.nn.init.ones_(module.weight)
+            if hasattr(module, 'bias') and module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
     
     def forward(self, input_ids, targets=None):
         """

@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+import inspect
+
 # dynamically import selected modules
 from importlib import import_module
 
@@ -27,17 +29,31 @@ class TransformerBlock(nn.Module):
 
         self.dropout = nn.Dropout(config.dropout)
 
+    # def forward(self, x, mask=None):
+    #     # Attention + Residual
+    #     # Check if attention module supports mask parameter
+    #     if hasattr(self.attn.forward, '__code__') and 'mask' in self.attn.forward.__code__.co_varnames:
+    #         attn_out = self.attn(self.norm1(x), mask=mask)
+    #     else:
+    #         attn_out = self.attn(self.norm1(x))
+    #     x = x + self.dropout(attn_out)
+
+    #     # FeedForward + Residual
+    #     ffn_out = self.ffn(self.norm2(x))
+    #     x = x + self.dropout(ffn_out)
+
+    #     return x
     def forward(self, x, mask=None):
         # Attention + Residual
-        # Check if attention module supports mask parameter
-        if hasattr(self.attn.forward, '__code__') and 'mask' in self.attn.forward.__code__.co_varnames:
+        sig = inspect.signature(self.attn.forward)
+        if 'mask' in sig.parameters:
             attn_out = self.attn(self.norm1(x), mask=mask)
         else:
             attn_out = self.attn(self.norm1(x))
         x = x + self.dropout(attn_out)
-
+        
         # FeedForward + Residual
         ffn_out = self.ffn(self.norm2(x))
         x = x + self.dropout(ffn_out)
-
+        
         return x
