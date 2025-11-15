@@ -3,9 +3,15 @@ import torch
 from torch.utils.data import Dataset
 
 class TextDataset(Dataset):
-    def __init__(self, text_path, block_size):
+    def __init__(self, text_path, block_size, max_chars=None):
         with open(text_path, 'r', encoding='utf-8') as f:
             self.data = f.read()
+        
+        # Limit data size for quick training if specified
+        if max_chars and len(self.data) > max_chars:
+            self.data = self.data[:max_chars]
+            print(f"📊 Dataset truncated to {max_chars:,} characters for quick training")
+        
         self.chars = sorted(list(set(self.data)))
         self.stoi = {ch: i for i, ch in enumerate(self.chars)}
         self.itos = {i: ch for ch, i in self.stoi.items()}
