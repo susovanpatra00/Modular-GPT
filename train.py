@@ -51,11 +51,11 @@ def main():
         return
     
     try:
-        # Start training with reduced epochs for quick training
+        # Start training with more epochs for larger model
         model, dataset = train_model(
             config_path="config/config.yaml",
             data_path=data_path,
-            epochs=3,  # Reduced for quick training (10-15 minutes)
+            epochs=10,  # More epochs for better training with larger model
             save_path="experiments/checkpoints/gpt_model.pt"
         )
         
