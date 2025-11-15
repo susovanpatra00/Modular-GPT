@@ -14,7 +14,7 @@ def load_config(config_path):
         config_dict = yaml.safe_load(f)
     return SimpleNamespace(**config_dict)
 
-def train_model(config_path="configs/base_config.yaml", data_path="data/input.txt",
+def train_model(config_path="config/config.yaml", data_path="data/input.txt",
                 epochs=10, save_path="model.pt"):
     """
     Train the GPT model.
@@ -49,30 +49,53 @@ def train_model(config_path="configs/base_config.yaml", data_path="data/input.tx
     weight_decay = float(getattr(config, 'weight_decay', 0.01))
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     
-    # Training loop
+    # Training loop with optimizations
     model.train()
+    print(f"Starting training: {epochs} epochs, {len(dataloader)} batches per epoch")
+    
     for epoch in range(epochs):
         total_loss = 0
         num_batches = 0
+        epoch_start_time = torch.cuda.Event(enable_timing=True) if device.type == 'cuda' else None
+        epoch_end_time = torch.cuda.Event(enable_timing=True) if device.type == 'cuda' else None
+        
+        if epoch_start_time:
+            epoch_start_time.record()
         
         for batch_idx, batch in enumerate(dataloader):
             input_ids, targets = [x.to(device) for x in batch]
+            
+            # Forward pass
             loss, _ = model(input_ids, targets)
             
+            # Backward pass
             optimizer.zero_grad()
             loss.backward()
+            
+            # Gradient clipping for stability
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
             optimizer.step()
             
             total_loss += loss.item()
             num_batches += 1
             
-            # Print progress every 100 batches
-            if (batch_idx + 1) % 100 == 0:
+            # Print progress every 50 batches for faster feedback
+            if (batch_idx + 1) % 50 == 0:
                 avg_loss = total_loss / num_batches
-                print(f"Epoch {epoch+1}/{epochs}, Batch {batch_idx+1}/{len(dataloader)}, Avg Loss: {avg_loss:.4f}")
+                progress = (batch_idx + 1) / len(dataloader) * 100
+                print(f"Epoch {epoch+1}/{epochs} | Batch {batch_idx+1}/{len(dataloader)} ({progress:.1f}%) | Loss: {avg_loss:.4f}")
+        
+        if epoch_end_time:
+            epoch_end_time.record()
+            torch.cuda.synchronize()
+            epoch_time = epoch_start_time.elapsed_time(epoch_end_time) / 1000.0  # Convert to seconds
+        else:
+            epoch_time = 0
         
         avg_loss = total_loss / len(dataloader)
-        print(f"Epoch {epoch+1}/{epochs} completed | Avg Loss: {avg_loss:.4f}")
+        print(f"✅ Epoch {epoch+1}/{epochs} completed | Avg Loss: {avg_loss:.4f}" +
+              (f" | Time: {epoch_time:.1f}s" if epoch_time > 0 else ""))
     
     # Save model
     os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else '.', exist_ok=True)
